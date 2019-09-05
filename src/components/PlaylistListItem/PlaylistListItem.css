@@ -1,7 +1,11 @@
-.Track {
+.PlaylistItem {
   display: flex;
   align-items: center;
   border-bottom: 1px solid rgba(256, 256, 256, 0.8);
+}
+
+.PlaylistItem h3 {
+  cursor: pointer;
 }
 
 .Track-action {
@@ -23,10 +27,6 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-}
-
-.Track-information img {
-  border: 1px solid white;
 }
 
 .Track-information h3 {

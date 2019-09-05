@@ -21,6 +21,26 @@
   color: #fff;
 }
 
+.Playlist-back {
+  cursor: pointer;
+  width: 4rem;
+  height: 2rem;
+  border-radius: 54px;
+  border-width: 0;
+  margin-bottom: 1.27rem;
+  margin-right: 25rem;
+  text-align: center;
+  font-size: .83rem;
+  transition: background-color .25s;
+  color: #fff;
+  background-color: #6c41ec;
+  font-weight: 500;
+}
+
+.Playlist-back:hover {
+  background-color: rgba(108, 65, 233, .7);
+}
+
 .Playlist-save {
   cursor: pointer;
   width: 10rem;
