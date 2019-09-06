@@ -29,7 +29,7 @@ h2 {
 
 .App {
   height: 100%;
-  padding: 0 17% 10% 17%;
+  padding: 0 10% 10% 10%;
   background-image: url('./background_photo_desktop.jpg');
   background-size: cover;
   background-position: center;
@@ -39,14 +39,28 @@ h2 {
   color: #fff;
 }
 
-.App-playlist {
+.App-trackPreview {
+  cursor: pointer;
+  display: block;
+  margin: -100px auto 25px auto;
+  padding: .25rem .35rem;
+  text-align: center;
+  background-color: white;
+  border: none;
+  border-radius: .5rem;
+  font-size: .8rem;
+  font-weight: 600;
+  opacity: .8;
+}
+
+.App-lists {
   display: flex;
   justify-content: space-between;
   width: 100%;
 }
 
 @media only screen and (max-width: 1020px) {
-  .App-playlist {
+  .App-lists {
     align-items: center;
     flex-direction: column;
   }

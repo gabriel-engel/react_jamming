@@ -19,6 +19,7 @@ class App extends React.Component {
       playlistView: false,
       playlistName: '',
       playlistId: '',
+      trackPreview: false
     }    
     
     this.search = this.search.bind(this);
@@ -32,6 +33,7 @@ class App extends React.Component {
     this.savePlaylist = this.savePlaylist.bind(this);
     this.deletePlaylist = this.deletePlaylist.bind(this);
     this.togglePlaylistView = this.togglePlaylistView.bind(this);
+    this.toggleTrackPreview = this.toggleTrackPreview.bind(this);
   }
     
   search(term) {
@@ -175,7 +177,8 @@ class App extends React.Component {
         <SearchResults
         searchResults={this.state.searchResults}
         onAdd={this.addTrack}
-        isRemoval={false} />
+        isRemoval={false}
+        trackPreview={this.state.trackPreview} />
       )
     }
   }
@@ -201,7 +204,8 @@ class App extends React.Component {
           onRemove={this.removeTrack}
           isRemoval={true}
           onNameChange={this.updatePlaylistName}
-          onSave={this.savePlaylist} />
+          onSave={this.savePlaylist}
+          trackPreview={this.state.trackPreview} />
       )
     }
   }
@@ -222,6 +226,12 @@ class App extends React.Component {
       playlistView: !this.state.playlistView
     });
   }
+  
+  toggleTrackPreview() {
+    this.setState({
+      trackPreview: !this.state.trackPreview
+    });
+  }
       
   render() {
     return (
@@ -230,7 +240,12 @@ class App extends React.Component {
         <div className="App">
           <SearchBar
             onSearch={this.search} />
-          <div className="App-playlist">
+          <button
+            className="App-trackPreview"
+            onClick={this.toggleTrackPreview} >
+          Track Preview: {this.state.trackPreview ? "on" : "off"}
+          </button>
+          <div className="App-lists">
             {this.renderSearchResults()}
             {this.renderPlaylistList()}
             {this.renderPlaylist()}

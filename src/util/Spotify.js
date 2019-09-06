@@ -87,7 +87,8 @@ const Spotify = {
           artist: track.artists[0].name,
           album: track.album.name,
           uri: track.uri,
-          fromPlaylist: false
+          fromPlaylist: false,
+          imageUrl: track.album.images[2].url
         }  
       });
     });
@@ -146,7 +147,8 @@ const Spotify = {
           artist: track.track.artists[0].name,
           album: track.track.album.name,
           uri: track.track.uri,
-          fromPlaylist: true
+          fromPlaylist: true,
+          imageUrl: track.track.album.images[2].url
         }
       })
     });

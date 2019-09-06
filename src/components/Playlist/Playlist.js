@@ -31,7 +31,8 @@ class Playlist extends React.Component {
         <TrackList
           tracks={this.props.playlistTracks}
           onRemove={this.props.onRemove}
-          isRemoval={this.props.isRemoval} />
+          isRemoval={this.props.isRemoval}
+          trackPreview={this.props.trackPreview} />
         <button
           className="Playlist-save"
           onClick={this.props.onSave} >
