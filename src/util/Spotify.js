@@ -6,37 +6,79 @@ let userId = '';
 
 const Spotify = {
   
-  getAccessToken() {
+  checkAuthentication() {
+    return accessToken
+  },
+  
+  checkSecretNumber(number) {
+    const cookieSecretNumber = document.cookie.match(/secretNumber=([^;]*)/)[1];
+
+    return cookieSecretNumber === number ? true : false;
+
+  },
+  
+  getAccessToken(term) {
     // if there is an accessToken, return it
     if (accessToken) return accessToken;
     
-    // check for access token and expiration in url
-    const accessTokenMatch = window.location.href.match(/access_token=([^&]*)/);
-    const expiresInMatch = window.location.href.match(/expires_in=([^&]*)/);
+    // retrieve hash values if present
+    const hashValues = this.processRedirectUriHash();
+    console.log(hashValues);
     
-    if (accessTokenMatch && expiresInMatch) {
-      // why are they access token[1]?????
-      console.log(`accessTokenMatch: ${accessTokenMatch}`);
-      console.log(`expiresInMatch: ${expiresInMatch}`);
-      accessToken = accessTokenMatch[1];
-      const expiresIn = Number(expiresInMatch[1]);
+    if (hashValues.accessToken && hashValues.expiration && hashValues.secretNumber) {
+      // if the secret number returned doeesn't match browser's cookie, don't store accessToken
+      if (!this.checkSecretNumber(hashValues.secretNumber)) return;
+      
+      accessToken = hashValues.accessToken;
+      
+      // remove hash after store search term in history state
+      window.history.pushState('Access Token Obtained', null, '/');
       
       // clear the accessToken after it expires
-      window.setTimeout(() => accessToken = '', expiresIn * 1000);
-      window.history.pushState('Access Token', null, '/');
+      window.setTimeout(() => accessToken = '', hashValues.expiration * 1000);
+      window.setTimeout(() => console.log('its been 1 second'), 1000);
+      
       return accessToken;
     } else {
       // if no access token in url, redirect user to authoriztion endpoint
       const scope = 'scope=playlist-modify-public%20playlist-modify-private%20playlist-read-private';
+      
+      // for security, create a secret random 4 digit number
+      const secretNumber = Math.floor(Math.random() * 10000);
+      
+      // set a cookie for the secret number so it is retrievable after URL changes and expires after 1 day
+      document.cookie = `secretNumber=${secretNumber}; expires=${new Date(Date.now()+1000*60*60*24)}; path=/`;
+      
       const accessUrl = 
             'https://accounts.spotify.com/authorize?client_id=' +
             clientId +
             '&response_type=token&' +
             scope +
             '&redirect_uri=' +
-            redirectUri;
-      window.location = accessUrl;
+            redirectUri +
+            `&state=${secretNumber}${term}`;
+      
+      window.location.href = accessUrl;
     }
+  },
+  
+  processRedirectUriHash() {
+    // if there is no hash, return empty object
+    if (!window.location.hash) return {};
+    
+    // if there is a hash, return an object with hash values as properties
+    const accessToken = window.location.href.match(/access_token=([^&]*)/)[1];
+    const expiration = Number(window.location.href.match(/expires_in=([^&]*)/)[1]);
+    const state = window.location.href.match(/state=([^&]*)/)[1];
+    const secretNumber = state.slice(0, 4);
+    const searchTerm = state.slice(4);
+        
+    return {
+      accessToken,
+      expiration,
+      secretNumber,
+      searchTerm
+    };
   },
   
   getUserId() {
@@ -59,11 +101,10 @@ const Spotify = {
   },
   
   search(term) {
-    console.log(`Spotify.search() search term: ${term}`);
-    const accessToken = Spotify.getAccessToken();
-    
-    console.log(`Spotify.search() access token: ${accessToken}`);
+    const accessToken = Spotify.getAccessToken(term);
     const searchEndpoint = 'https://api.spotify.com/v1/search?type=track&q=';
+    console.log(searchEndpoint);
+    console.log(term);
     
     return fetch(`${searchEndpoint}${term}`, {
       headers: {
@@ -95,7 +136,8 @@ const Spotify = {
   },
   
   async getUserPlaylists() {
-    const accessToken = Spotify.getAccessToken();
+    
+    const accessToken = await Spotify.getAccessToken();
     const headers = { Authorization: `Bearer ${accessToken}` };
     const userId = await Spotify.getUserId();
     const getUserPlaylistsEndpoint = `https://api.spotify.com/v1/users/${userId}/playlists`;

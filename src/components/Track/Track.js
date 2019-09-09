@@ -27,7 +27,7 @@ class Track extends React.Component {
             <div className="Track-information-img">
               <img 
                 src={this.props.track.imageUrl}
-                alt="track image"
+                alt="track art"
               />
             </div>
             <div className="Track-information-text">

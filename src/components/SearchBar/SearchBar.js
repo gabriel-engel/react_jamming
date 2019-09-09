@@ -1,5 +1,6 @@
 import React from 'react';
 import './SearchBar.css';
+import Spotify from '../../util/Spotify';
 
 class SearchBar extends React.Component {
   
@@ -23,11 +24,12 @@ class SearchBar extends React.Component {
       term: event.target.value
     });
   }
-  
+    
   render() {
     return (
       <div className="SearchBar">
         <input
+          className="SearchBar-input"
           placeholder="Enter A Song, Album, or Artist"
           onChange={this.handleTermChange} />
         <button 
@@ -37,6 +39,18 @@ class SearchBar extends React.Component {
         </button>
       </div>
     );
+  }
+  
+  componentDidMount() {
+    const input = document.querySelector('.SearchBar-input');
+    const hashTerm = Spotify.processRedirectUriHash().searchTerm;
+
+    if (hashTerm !== undefined && hashTerm !== 'undefined') {
+      input.value = hashTerm;
+      this.setState({
+        term: hashTerm
+      });
+    }
   }
 }
 

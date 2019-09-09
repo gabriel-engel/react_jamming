@@ -43,8 +43,6 @@ class App extends React.Component {
         searchResults: searchResults
       });
     });
-    
-    if (!this.state.currentPlaylistList) this.getUserPlaylists();
   }
     
   // get user playlist list and set currentPlaylistList state to true
@@ -172,7 +170,7 @@ class App extends React.Component {
   }
   
   renderSearchResults() {
-    if (this.state.currentPlaylistList) {
+    if (Spotify.checkAuthentication()) {      
       return (
         <SearchResults
         searchResults={this.state.searchResults}
@@ -184,18 +182,23 @@ class App extends React.Component {
   }
   
   renderPlaylistList() {
-      if (!this.state.playlistView && this.state.currentPlaylistList) {
-        return (
-          <PlaylistList
-          playlistList={this.state.playlistList}
-          onOpen={this.togglePlaylistView}
-          onDelete={this.deletePlaylist} />
-        )
+    if (!this.state.playlistView && Spotify.checkAuthentication()) {
+      // if there is no current playlist, load it first
+      if (!this.state.currentPlaylistList) {
+        this.getUserPlaylists();
       }
+
+      return (
+        <PlaylistList
+        playlistList={this.state.playlistList}
+        onOpen={this.togglePlaylistView}
+        onDelete={this.deletePlaylist} />
+      )
+    }
   }
   
   renderPlaylist() {
-    if (this.state.playlistView && this.state.currentPlaylistList) {
+    if (this.state.playlistView && Spotify.checkAuthentication()) {    
       return (
         <Playlist
           onBack={this.togglePlaylistView}
@@ -253,6 +256,19 @@ class App extends React.Component {
         </div>
       </div>
     );
+  }
+  
+  componentDidMount() {
+    /**
+     * If the URL contains an access token as a hash value, automatically
+     * run this.search() to store the authentication token in Spotify.js
+     * This will return a search result and calls to Spotify.checkAuthentication()
+     * will return true so the results and playlist components will render
+     */
+    
+    if (Spotify.processRedirectUriHash().accessToken) {
+      this.search();
+    }
   }
 }
 
