@@ -36,7 +36,6 @@ const Spotify = {
       
       // clear the accessToken after it expires
       window.setTimeout(() => accessToken = '', hashValues.expiration * 1000);
-      window.setTimeout(() => console.log('its been 1 second'), 1000);
       
       return accessToken;
     } else {
@@ -103,8 +102,7 @@ const Spotify = {
   search(term) {
     const accessToken = Spotify.getAccessToken(term);
     const searchEndpoint = 'https://api.spotify.com/v1/search?type=track&q=';
-    console.log(searchEndpoint);
-    console.log(term);
+    console.log(`search term: ${term}`);
     
     return fetch(`${searchEndpoint}${term}`, {
       headers: {

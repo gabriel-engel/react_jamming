@@ -45,7 +45,9 @@ class SearchBar extends React.Component {
     const input = document.querySelector('.SearchBar-input');
     const hashTerm = Spotify.processRedirectUriHash().searchTerm;
 
-    if (hashTerm !== undefined && hashTerm !== 'undefined') {
+    // when first arrive at callback URL, this properly updates input box
+    if (hashTerm && (hashTerm !== undefined && hashTerm !== 'undefined')) {
+      console.log('went');
       input.value = hashTerm;
       this.setState({
         term: hashTerm

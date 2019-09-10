@@ -259,15 +259,17 @@ class App extends React.Component {
   }
   
   componentDidMount() {
+    
     /**
      * If the URL contains an access token as a hash value, automatically
      * run this.search() to store the authentication token in Spotify.js
      * This will return a search result and calls to Spotify.checkAuthentication()
      * will return true so the results and playlist components will render
      */
+    const hashValues = Spotify.processRedirectUriHash();
     
-    if (Spotify.processRedirectUriHash().accessToken) {
-      this.search();
+    if (hashValues.accessToken) {
+      this.search(hashValues.searchTerm);
     }
   }
 }
