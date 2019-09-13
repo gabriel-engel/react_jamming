@@ -115,19 +115,17 @@ const Spotify = {
     .then(jsonResponse => {
       if (!jsonResponse.tracks) return [];
       
-      let position = 0;
-      
       return jsonResponse.tracks.items.map(track => {
         // same format as getPlaylistTracks() track list
         return {
-          position: position++,
           id: track.id,
           name: track.name,
           artist: track.artists[0].name,
           album: track.album.name,
           uri: track.uri,
           fromPlaylist: false,
-          imageUrl: track.album.images[2].url
+          imageUrl: track.album.images[2].url,
+          visible: true
         }  
       });
     });
@@ -174,21 +172,19 @@ const Spotify = {
     })
     .then(jsonResponse => {
       
-      let position = 0;
-      
       return jsonResponse.items.map(track => {
                 
         // same format as search() track list
         console.log(`retrieved playlist track: ${track.track.name}`);
         return {
-          position: position++,
           id: track.track.id,
           name: track.track.name,
           artist: track.track.artists[0].name,
           album: track.track.album.name,
           uri: track.track.uri,
           fromPlaylist: true,
-          imageUrl: track.track.album.images[2].url
+          imageUrl: track.track.album.images[2].url,
+          visible: true
         }
       })
     });
@@ -235,6 +231,10 @@ const Spotify = {
     });
   },
   
+  /**
+   * retaining these API calls for future use
+   * namely, providing a way to work with playlists with 100+ tracks
+   
   addTracksToPlaylist(headers, id, newTrackUris) {
     
     const addToPlaylistEndpoint = `https://api.spotify.com/v1/playlists/${id}/tracks`;
@@ -256,17 +256,27 @@ const Spotify = {
       body: JSON.stringify( {uris: deleteTrackUris})
     });
   },
+  */
+  
+  replaceTracksInPlaylist(headers, id, trackUris) {
+    
+    const replaceTracksEndpoint = `https://api.spotify.com/v1/playlists/${id}/tracks`
+    
+    return fetch(replaceTracksEndpoint, {
+      headers: headers,
+      method: 'PUT',
+      body: JSON.stringify( {uris: trackUris} )
+    });
+  },
   
   // saves new playlists or updates existing ones
-  async savePlaylist(id, name, newTrackUris, deleteTrackUris, newName) {
+  async savePlaylist(id, name, trackUris, newName) {
     console.log(`saving playlist id: ${id} name: ${name}`);
-    console.log('new tracks:');
-    console.log(newTrackUris);
-    console.log('deleting tracks:');
-    console.log(deleteTrackUris);
+    console.log('tracks:');
+    console.log(trackUris);
     console.log(`new name?: ${newName}`);
     
-    if (!name || !newTrackUris || !deleteTrackUris) return;
+    if (!name && !trackUris) return;
     
     const accessToken = Spotify.getAccessToken();
     const headers = { Authorization: `Bearer ${accessToken}` };
@@ -280,20 +290,15 @@ const Spotify = {
       });
     }
     
-    
+    // rename the playlist
     if (newName) {
        await Spotify.changePlaylistName(headers, id, name);
     }
     
     // add tracks to the playlist
-    if (newTrackUris.length > 0) {
-      await Spotify.addTracksToPlaylist(headers, id, newTrackUris);
+    if (trackUris.length > 0) {
+      await Spotify.replaceTracksInPlaylist(headers, id, trackUris);
     } 
-    
-    // remove tracks from the playlist
-    if (deleteTrackUris.length > 0) {
-      await Spotify.removeTracksFromPlaylist(headers, id, deleteTrackUris);
-    }
   }
 };
 

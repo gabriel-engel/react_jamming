@@ -39,10 +39,14 @@ h2 {
   color: #fff;
 }
 
-.App-trackPreview {
+.App-options {
+  margin: -100px auto 0 auto;
+}
+
+.App-option {
   cursor: pointer;
   display: block;
-  margin: -100px auto 25px auto;
+  margin: 0 auto 25px auto;
   padding: .25rem .35rem;
   text-align: center;
   background-color: white;

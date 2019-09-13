@@ -7,8 +7,13 @@ class TrackList extends React.Component {
     return (
       <div className="TrackList">
         {
-          this.props.tracks.map(track => {
-            return <Track key={track.position}
+          this.props.tracks.map((track, index) => {
+            
+            if (!track.visible) return;
+            
+            return <Track
+                     key={index}
+                     index={index}
                      track={track}
                      onAdd={this.props.onAdd}
                      onRemove={this.props.onRemove}
