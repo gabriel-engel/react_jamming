@@ -1,3 +1,12 @@
+.delete {
+  background-color: rgba(200, 0, 0, 0.5);
+  text-decoration-line: line-through;
+}
+
+.Track-action {
+  color: red;
+}
+
 .Track {
   display: flex;
   justify-content: space-between;

@@ -29,11 +29,14 @@ class App extends React.Component {
     this.setPlaylistDetails = this.setPlaylistDetails.bind(this);
     this.addTrack = this.addTrack.bind(this);
     this.removeTrack = this.removeTrack.bind(this);
+    this.trackIsInSearchResults = this.trackIsInSearchResults.bind(this);
+    this.trackIsInPlaylist = this.trackIsInPlaylist.bind(this);
     this.updatePlaylistName = this.updatePlaylistName.bind(this);
     this.checkForNewPlaylistName = this.checkForNewPlaylistName.bind(this);
     this.savePlaylist = this.savePlaylist.bind(this);
     this.deletePlaylist = this.deletePlaylist.bind(this);
     this.togglePlaylistView = this.togglePlaylistView.bind(this);
+    this.hideShowDuplicateTracks = this.hideShowDuplicateTracks.bind(this);
     this.toggleTrackPreview = this.toggleTrackPreview.bind(this);
     this.toggleDuplicateTrackVisibility = this.toggleDuplicateTrackVisibility.bind(this);
   }
@@ -44,7 +47,8 @@ class App extends React.Component {
       this.setState({
         searchResults: searchResults
       });
-    });
+    })
+    .then(() => this.hideShowDuplicateTracks());
   }
     
   // get user playlist list and set currentPlaylistList state to true
@@ -70,6 +74,7 @@ class App extends React.Component {
         playlistTracks: playlistTracks
       });
     })
+    .then(() => this.hideShowDuplicateTracks());
     
     // set playlist details
     this.setPlaylistDetails(playlistId);
@@ -92,33 +97,78 @@ class App extends React.Component {
     });
   }
   
-  addTrack(key) {
-    const tracks = this.state.playlistTracks;
+  addTrack(key, fromPlaylist) {
     
-    /* for hide duplicates
-    // if the track is in the playlist, exit method
-    if (tracks.find(savedTrack => savedTrack.id === track.id)) {
-      return;
+    const searchResults = this.state.searchResults;
+    const playlistTracks = this.state.playlistTracks;
+        
+    // if readding a deleted track from the playlist, change delete property
+    if (fromPlaylist && !this.trackIsInSearchResults(playlistTracks[key].id)) {
+      playlistTracks[key].delete = false;
+      
+      // use set state to force an update to the track
+      this.setState({});
+    } else {
+          
+      const track = Object.assign({}, searchResults[key]);
+      
+      playlistTracks.push(track);
+      
+      // if show duplicates is off, hide the track in the search results
+      if (!this.state.showDuplicateTracks) {
+        searchResults[key].visible = false;
+      }
+      
+      this.setState({
+        playlistTracks: playlistTracks
+      });
     }
-    */
-    const track = this.state.searchResults[key];
-    
-    tracks.push(track);
-    
-    this.setState({
-      playlistTracks: tracks
-    });
   }
   
   removeTrack(key) {
     
     const tracks = this.state.playlistTracks;
-    
-    const reducedTracks = tracks.filter((track, index) => index !== key);
-    
-    this.setState({
-      playlistTracks: reducedTracks
-    });
+    const searchResults = this.state.searchResults;
+        
+    // if track is not in search results cross it out rather than remove it
+    if (!this.trackIsInSearchResults(tracks[key].id)) {
+      tracks[key].delete = true;
+
+      // use set state to force an update to the track
+      this.setState({});
+    } else {
+      
+      // if show duplicates is off, reveal the track in the search results again
+      if (!this.state.showDuplicateTracks) {
+        for (let result of searchResults) {
+          if (result.id === tracks[key].id) {
+            result.visible = true;
+            break;
+          }
+        }
+      }
+      
+      // filter out the removed track from the playlist track array
+      const reducedTracks = tracks.filter((track, index) => index !== key);
+
+      this.setState({
+        playlistTracks: reducedTracks
+      });
+    }
+  }
+  
+  trackIsInSearchResults(trackId) {
+    for (let track of this.state.searchResults) {
+      if (track.id === trackId) return true;
+    }
+    return false;
+  }
+  
+  trackIsInPlaylist(trackId) {
+    for (let track of this.state.playlistTracks) {
+      if (track.id === trackId) return true;
+    }
+    return false;
   }
   
   // did the user change the playlists name?
@@ -135,7 +185,8 @@ class App extends React.Component {
   
   savePlaylist() {
     
-    let tracks = this.state.playlistTracks;
+    // all tracks minus those flagged for deletion
+    let tracks = this.state.playlistTracks.filter(track => !track.delete);
     
     if (!this.state.showDuplicateTracks) {
       const permission = window.confirm('Hidden duplicate tracks will be lost, proceed?');
@@ -176,7 +227,7 @@ class App extends React.Component {
         <SearchResults
         searchResults={this.state.searchResults}
         onAdd={this.addTrack}
-        isRemoval={false}
+        isInPlaylist={false}
         trackPreview={this.state.trackPreview} />
       )
     }
@@ -199,14 +250,16 @@ class App extends React.Component {
   }
   
   renderPlaylist() {
-    if (this.state.playlistView && Spotify.checkAuthentication()) {    
+    if (this.state.playlistView && Spotify.checkAuthentication()) {
+      
       return (
         <Playlist
           onBack={this.togglePlaylistView}
           playlistName={this.state.playlistName}
           playlistTracks={this.state.playlistTracks}
           onRemove={this.removeTrack}
-          isRemoval={true}
+          onAdd={this.addTrack}
+          isInPlaylist={true}
           onNameChange={this.updatePlaylistName}
           onSave={this.savePlaylist}
           trackPreview={this.state.trackPreview} />
@@ -237,50 +290,51 @@ class App extends React.Component {
     });
   }
   
-  toggleDuplicateTrackVisibility() {
-    
-    const visible = this.state.showDuplicateTracks;
-    const results = this.state.searchResults;
-    const tracks = this.state.playlistTracks;
-    
-    if (visible) {
-      // hide search results that are in playlist
-      for (let result of results) {
-        for (let track of tracks) {
-          if (result.id === track.id) {
-            result.visible = false;
-            break;
-          }
-        }
-      }
+  hideShowDuplicateTracks(toggle) {
+    console.log('hide-------show');
+    const visible = !toggle ? this.state.showDuplicateTracks : !this.state.showDuplicateTracks;
+    const searchResults = this.state.searchResults;
+    const playlistTracks = this.state.playlistTracks;
+    console.log(`show duplicate tracks in hideShow(): ${visible}`);
+    console.log('-------------------');
+    // if duplicate tracks are supposed to be invisible
+    if (!visible) {
 
-      // hide reapeat occurences of a track in the playlist
-      // cycle through each track
-      for (let i = 0; i < tracks.length; i++) {
-        // compare to remaining tracks
-        for (let j = i + 1; j < tracks.length; j++) {
-          // if a match is found later, make it invisible
-          if (tracks[i].id === tracks[j].id) {
-            tracks[j].visible = false;
+      // hide all but one of any track in playlist
+      for (let i = 0; i < playlistTracks.length; i++) {
+        if (playlistTracks[i].visible === false) continue;
+        for (let j = i + 1; j < playlistTracks.length; j++) {
+          if (playlistTracks[i].id === playlistTracks[j].id) {
+            playlistTracks[j].visible = false;
           }
         }
       }
-    } else {
       
-      for (let result of results) {
+      // if track is in search results, hide it
+      for (let result of searchResults) {
+        if (this.trackIsInPlaylist(result.id)) result.visible = false;
+      }
+      
+    } else {
+      // if duplicate tracks are hidden, show them
+      for (let result of searchResults) {
         result.visible = true;
       }
       
-      for (let track of tracks) {
+      for (let track of playlistTracks) {
         track.visible = true;
       }
     }
-        
+    
     this.setState({
-      showDuplicateTracks: !this.state.showDuplicateTracks,
-      searchResults: results,
-      playlistTracks: tracks
+      searchResults: searchResults,
+      playlistTracks: playlistTracks,
+      showDuplicateTracks: visible
     });
+  }
+  
+  toggleDuplicateTrackVisibility() {
+    this.hideShowDuplicateTracks(true);
   }
       
   render() {
@@ -299,7 +353,7 @@ class App extends React.Component {
             <button
               className="App-option"
               onClick={this.toggleDuplicateTrackVisibility} >
-            Show Duplicate Tracks: {this.state.showDuplicateTracks ? "on" : "off"}
+            Show Duplicate Tracks: {this.state.showDuplicateTracks ? "Yes" : "No"}
             </button>
           </ div>
           <div className="App-lists">
@@ -313,7 +367,6 @@ class App extends React.Component {
   }
   
   componentDidMount() {
-    
     /**
      * If the URL contains an access token as a hash value, automatically
      * run this.search() to store the authentication token in Spotify.js

@@ -17,8 +17,8 @@ class TrackList extends React.Component {
                      track={track}
                      onAdd={this.props.onAdd}
                      onRemove={this.props.onRemove}
-                     isRemoval={this.props.isRemoval}
-                     trackPreview={this.props.trackPreview} />
+                     isInPlaylist={this.props.isInPlaylist}
+                     trackPreview={this.props.trackPreview}/>
           })
         }
       </div>

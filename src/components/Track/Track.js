@@ -10,7 +10,7 @@ class Track extends React.Component {
   }
   
   addTrack() {
-    this.props.onAdd(this.props.index);
+    this.props.onAdd(this.props.index, this.props.isInPlaylist);
   }
   
   removeTrack() {
@@ -55,20 +55,28 @@ class Track extends React.Component {
   }
   
   renderAction() {
-    if (this.props.isRemoval) {
-      return <button className="Track-action" onClick={this.removeTrack}>-</button>;
-    } else {
+    if (this.props.track.delete) {
       return <button className="Track-action" onClick={this.addTrack}>+</button>;
+    } else if (!this.props.isInPlaylist) {
+      return <button className="Track-action" onClick={this.addTrack}>+</button>;
+    } else {
+      return <button className="Track-action" onClick={this.removeTrack}>-</button>;
     }
   }
   
   render() {
+    // add delete class to tracks flagged for deletion
+    let className = 'Track';
+    if (this.props.track.delete) {
+      className += ' delete';
+    }
+    
     return (
-      <div className="Track">
-        {this.renderSimpleTrackInfo()}
-        {this.renderAdvancedTrackInfo()}
-        {this.renderAction()}
-      </div>
+        <div className={className}>
+          {this.renderSimpleTrackInfo()}
+          {this.renderAdvancedTrackInfo()}
+          {this.renderAction()}
+        </div>
     );
   }
 }
