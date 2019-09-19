@@ -103,7 +103,7 @@ class App extends React.Component {
     const playlistTracks = this.state.playlistTracks;
         
     // if readding a deleted track from the playlist, change delete property
-    if (fromPlaylist && !this.trackIsInSearchResults(playlistTracks[key].id)) {
+    if (fromPlaylist) {
       playlistTracks[key].delete = false;
       
       // use set state to force an update to the track
