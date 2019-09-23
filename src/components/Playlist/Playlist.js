@@ -8,6 +8,7 @@ class Playlist extends React.Component {
     this.state = {};
     this.handleBackButton = this.handleBackButton.bind(this);
     this.handleNameChange = this.handleNameChange.bind(this);
+    this.handleSave = this.handleSave.bind(this);
   }
   
   handleBackButton() {
@@ -16,6 +17,10 @@ class Playlist extends React.Component {
   
   handleNameChange(event) {
     this.props.onNameChange(event.target.value);
+  }
+  
+  handleSave() {
+    this.props.onSave();
   }
   
   render() {
@@ -37,7 +42,7 @@ class Playlist extends React.Component {
           trackPreview={this.props.trackPreview} />
         <button
           className="Playlist-save"
-          onClick={this.props.onSave} >
+          onClick={this.handleSave} >
           SAVE TO SPOTIFY
         </button>
       </div>

@@ -1,0 +1,61 @@
+.Confirmation-background {
+  position: fixed;
+  top: 0px;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, .5);
+}
+
+.Confirmation-box {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  width: 50vw;
+  height: 30vw;
+  max-height: 25vw;
+  margin: 35vh 25vw;
+  background-color: #7e05a3;
+  border: 2px solid white;
+}
+
+.Confirmation-message {
+  margin-bottom: 2vh;
+  margin-top: 0;
+  text-align: center;
+  font-size: 4vmin;
+  color: white;
+}
+
+.Confirmation-options {
+  display: flex;
+  justify-content: center;
+}
+
+.Confirmation-option-one {
+  width: 10vmin;
+  margin: 0 10px;
+  background-color: white;
+  font-size: 4vmin;
+  border: 3px solid #7e05a3;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.Confirmation-option-two {
+  width: 10vmin;
+  margin: 0 10px;
+  color: white;
+  font-size: 4vmin;
+  background-color: #cf0000;
+  border: 3px solid #7e05a3;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.Confirmation-option-one:hover {
+  border: 3px solid white;
+}
+
+.Confirmation-option-two:hover {
+  border: 3px solid #cf0000;
+}

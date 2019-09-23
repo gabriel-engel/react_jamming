@@ -5,6 +5,7 @@ import SearchResults from '../SearchResults/SearchResults';
 import PlaylistList from '../PlaylistList/PlaylistList';
 import Playlist from '../Playlist/Playlist';
 import Spotify from '../../util/Spotify';
+import Confirmation from '../Confirmation/Confirmation';
 
 class App extends React.Component {
   constructor(props) {
@@ -14,18 +15,21 @@ class App extends React.Component {
       searchResults: [],
       playlistList: [],
       playlistTracks: [],
+      backupPlaylistTracks: [],
       playlistTracksToRemove: [],
       currentPlaylistList: false,
       playlistView: false,
       playlistName: '',
       playlistId: '',
       trackPreview: false,
-      showDuplicateTracks: true
+      showDuplicateTracks: true,
+      confirmation: {}
     }    
     
     this.search = this.search.bind(this);
     this.getUserPlaylists = this.getUserPlaylists.bind(this);
     this.getPlaylistTracks = this.getPlaylistTracks.bind(this);
+    this.checkForChangesInPlaylist = this.checkForChangesInPlaylist.bind(this);
     this.setPlaylistDetails = this.setPlaylistDetails.bind(this);
     this.addTrack = this.addTrack.bind(this);
     this.removeTrack = this.removeTrack.bind(this);
@@ -39,6 +43,7 @@ class App extends React.Component {
     this.hideShowDuplicateTracks = this.hideShowDuplicateTracks.bind(this);
     this.toggleTrackPreview = this.toggleTrackPreview.bind(this);
     this.toggleDuplicateTrackVisibility = this.toggleDuplicateTrackVisibility.bind(this);
+    this.beforeLeavingApp = this.beforeLeavingApp.bind(this);
   }
     
   search(term) {
@@ -70,14 +75,38 @@ class App extends React.Component {
     .then(playlistTracks => {
       console.log(`get playlist's tracks:`);
       console.log(playlistTracks);
+      
+      // create a backup of unique tracks
+      const backupPlaylistTracks = [];
+      
+      for (let track of playlistTracks) {
+        backupPlaylistTracks.push(Object.assign({}, track));
+      }
+      
       this.setState({
-        playlistTracks: playlistTracks
+        playlistTracks: playlistTracks,
+        backupPlaylistTracks: backupPlaylistTracks
       });
     })
     .then(() => this.hideShowDuplicateTracks());
     
     // set playlist details
     this.setPlaylistDetails(playlistId);
+  }
+  
+  checkForChangesInPlaylist() {
+    const playlist = this.state.playlistTracks;
+    const backup = this.state.backupPlaylistTracks;
+    
+    if (playlist.length !== backup.length) return true;
+    
+    for (let track of playlist) {
+      if (track.delete === true) return true;
+    }
+    
+    for (let i = 0; i < playlist.length; i++) {
+      if (playlist[i].id !== backup[i].id) return true;
+    }
   }
   
   setPlaylistDetails(playlistId) {
@@ -183,15 +212,36 @@ class App extends React.Component {
     return false;
   }
   
-  savePlaylist() {
-    
+  savePlaylist(confirm) {
     // all tracks minus those flagged for deletion
     let tracks = this.state.playlistTracks.filter(track => !track.delete);
-    
+    const totalNumberOfTracks = tracks.slice().length;
+
+    // if tracks are hidden
     if (!this.state.showDuplicateTracks) {
-      const permission = window.confirm('Hidden duplicate tracks will be lost, proceed?');
-      if (permission === false) return;
-      tracks = tracks.filter(track => track.visible);
+      
+      const visibleTracks = tracks.filter(track => track.visible);
+
+      // if there are invisible tracks, get save confirmation
+      if (visibleTracks.length !== totalNumberOfTracks && !confirm) {
+        const message = "Hidden duplicate tracks will not be saved";
+        this.getConfirmation(message, this.savePlaylist);
+        return;
+      }
+      
+      // handle confirmation response
+      if (confirm === "no") {
+        this.setState({
+          confirmation: {}
+        });
+        return;
+      }
+      
+      if (confirm === "yes") {
+        this.setState({
+          confirmation: {}
+        });
+      }
     }
       
     const trackUris = tracks.map(track => track.uri)
@@ -216,7 +266,30 @@ class App extends React.Component {
     });
   }
   
-  deletePlaylist(playlistId) {
+  deletePlaylist(playlistId, confirm) {
+    if (!confirm) {
+      const message = "Are you sure you want to delete the playlist?";
+      this.getConfirmation(message, this.deletePlaylist, playlistId);
+      return;
+    }
+    
+    console.log(`confirm: ${confirm}`);
+    
+    if (confirm === "no") {
+      console.log('playlist not deleted');
+      this.setState({
+        confirmation: {}
+      });
+      return;
+    }
+    
+    if (confirm === "yes") {
+      console.log('playlist deleted');
+      this.setState({
+        confirmation: {}
+      });
+    }
+    
     Spotify.deletePlaylist(playlistId)
     .then(() => this.getUserPlaylists());
   }
@@ -267,21 +340,62 @@ class App extends React.Component {
     }
   }
   
-  togglePlaylistView(playlistId) {
+  renderConfirmation() {
+    if (this.state.confirmation.msg) {
+      console.log(this.state.confirmation);
+      return (
+        <Confirmation 
+          confirmation={this.state.confirmation} />
+      );
+    }
+  }
+  
+  togglePlaylistView(playlistId, confirm) {
     console.log('toggle');
-    // load existing playlist's tracks or start fresh with new playlist
-    if (playlistId) {
+    console.log(playlistId);
+    /**
+     * If there is a playlistId and it isn't the result of a user confirmation
+     * callback function, the user is accessing a playlist from the playlistList
+     * component
+     *
+     * Otherwise, the user is exiting a playlist and a confirmation is required
+     */
+    if (playlistId && !confirm) {
       this.getPlaylistTracks(playlistId);
+      this.setState({
+        playlistView: !this.state.playlistView
+      });
     } else {
+      
+      // first, ask user for confirmation
+      if (this.checkForChangesInPlaylist() && !confirm) {
+        const message = "Unsaved changes will not be saved, continue?";
+        this.getConfirmation(message, this.togglePlaylistView, this.state.playlistId);
+        return;
+      }
+      
+      // next, reset confirmation state and proceed according to confirm reply
+      
+      if (confirm === "no") {
+        this.setState({
+          confirmation: {}
+        });
+        return;
+      }
+
+      if(confirm === "yes") {
+        this.setState({
+          confirmation: {}
+        });
+      }
+      
       this.setState({
         playlistTracks: [],
-        playlistName: ''
+        backupPlaylistTracks: [],
+        playlistName: '',
+        playlistView: !this.state.playlistView
       });
     }
-    
-    this.setState({
-      playlistView: !this.state.playlistView
-    });
   }
   
   toggleTrackPreview() {
@@ -336,6 +450,27 @@ class App extends React.Component {
   toggleDuplicateTrackVisibility() {
     this.hideShowDuplicateTracks(true);
   }
+  
+  getConfirmation(msg, func, ...params) {
+    console.log(msg);
+    console.log(func);
+    console.log(...params);
+    this.setState({
+      confirmation: {
+        msg,
+        func,
+        params
+      }
+    });
+  }
+  
+  beforeLeavingApp(confirm) {
+    if (this.checkForChangesInPlaylist()) {
+      return "Unsaved changes will be lost, leave?";
+    } else {
+      return;
+    }
+  }
       
   render() {
     return (
@@ -362,11 +497,14 @@ class App extends React.Component {
             {this.renderPlaylist()}
           </div>
         </div>
+        {this.renderConfirmation()}
       </div>
     );
   }
   
-  componentDidMount() {
+  componentDidMount() {  
+    window.onbeforeunload = this.beforeLeavingApp;
+    
     /**
      * If the URL contains an access token as a hash value, automatically
      * run this.search() to store the authentication token in Spotify.js
