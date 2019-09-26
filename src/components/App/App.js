@@ -23,7 +23,8 @@ class App extends React.Component {
       playlistId: '',
       trackPreview: false,
       showDuplicateTracks: true,
-      confirmation: {}
+      confirmation: {},
+      touchInput: false
     }    
     
     this.search = this.search.bind(this);
@@ -33,6 +34,7 @@ class App extends React.Component {
     this.setPlaylistDetails = this.setPlaylistDetails.bind(this);
     this.addTrack = this.addTrack.bind(this);
     this.removeTrack = this.removeTrack.bind(this);
+    this.swapTracks = this.swapTracks.bind(this);
     this.trackIsInSearchResults = this.trackIsInSearchResults.bind(this);
     this.trackIsInPlaylist = this.trackIsInPlaylist.bind(this);
     this.updatePlaylistName = this.updatePlaylistName.bind(this);
@@ -43,6 +45,7 @@ class App extends React.Component {
     this.hideShowDuplicateTracks = this.hideShowDuplicateTracks.bind(this);
     this.toggleTrackPreview = this.toggleTrackPreview.bind(this);
     this.toggleDuplicateTrackVisibility = this.toggleDuplicateTrackVisibility.bind(this);
+    this.handleTouchInput = this.handleTouchInput.bind(this);
     this.beforeLeavingApp = this.beforeLeavingApp.bind(this);
   }
     
@@ -184,6 +187,62 @@ class App extends React.Component {
         playlistTracks: reducedTracks
       });
     }
+  }
+  
+  swapTracks(indexA, indexB) {
+    // rearrange visible tracks
+    let trackList = this.state.playlistTracks.filter(track => track.visible);
+    console.log(indexA);
+    console.log(indexB);
+    // make sure move is valid
+    if (indexA === indexB) return;
+    if (indexA < 0 || indexB < 0) return;
+    if (indexA > trackList.length || indexB > trackList.length) return;
+    if (indexA === trackList.length - 1 && indexB === 'end') return;
+    
+    // handle moving second to last track down using the down button
+    if (indexB === trackList.length) indexB = 'end';
+    
+    const newTrackList = [];
+    const sourceTrack = trackList[indexA];
+    
+    // skip pushing source track until we are at indexB
+    for (let i = 0; i < trackList.length; i++) {
+      if (i !== indexA) {
+        // if at insertion point, push the source track
+        if (i === indexB) newTrackList.push(sourceTrack);
+        
+        newTrackList.push(trackList[i]);
+        
+        // if at end and insertion point is at the end, push source track
+        if (i === trackList.length - 1 && indexB === 'end') {
+          newTrackList.push(sourceTrack);
+        }
+      }
+    }
+    
+    let finalPlaylist = [];
+    // if there are invisible tracks, add them back into array
+    if (newTrackList.length !== this.state.playlistTracks.length) {
+      let i = 0;
+      for (let track of this.state.playlistTracks) {
+        if (track.visible) {
+          console.log(newTrackList);
+          console.log(newTrackList[i]);
+          finalPlaylist.push(newTrackList[i]);
+          i++;
+        } else {
+          finalPlaylist.push(track);
+        }
+      }
+    } else {
+      finalPlaylist = newTrackList;
+    }
+    
+    this.setState({
+      playlistTracks: finalPlaylist
+    });
+    
   }
   
   trackIsInSearchResults(trackId) {
@@ -332,6 +391,8 @@ class App extends React.Component {
           playlistTracks={this.state.playlistTracks}
           onRemove={this.removeTrack}
           onAdd={this.addTrack}
+          onSwap={this.swapTracks}
+          touchInput={this.state.touchInput}
           isInPlaylist={true}
           onNameChange={this.updatePlaylistName}
           onSave={this.savePlaylist}
@@ -464,6 +525,10 @@ class App extends React.Component {
     });
   }
   
+  handleTouchInput(event) {
+    this.setState({touchInput: true});
+  }
+  
   beforeLeavingApp(confirm) {
     if (this.checkForChangesInPlaylist()) {
       return "Unsaved changes will be lost, leave?";
@@ -502,7 +567,9 @@ class App extends React.Component {
     );
   }
   
-  componentDidMount() {  
+  componentDidMount() {
+    document.addEventListener('touchstart', this.handleTouchInput);
+    
     window.onbeforeunload = this.beforeLeavingApp;
     
     /**

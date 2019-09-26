@@ -38,6 +38,8 @@ class Playlist extends React.Component {
           tracks={this.props.playlistTracks}
           onRemove={this.props.onRemove}
           onAdd={this.props.onAdd}
+          onSwap={this.props.onSwap}
+          touchInput={this.props.touchInput}
           isInPlaylist={this.props.isInPlaylist}
           trackPreview={this.props.trackPreview} />
         <button
