@@ -1,0 +1,15 @@
+.Message {
+  position: fixed;
+  bottom: 2vw;
+  left: 2vw;
+  padding: 5px 10px;
+  background-color: darkslateblue;
+  text-align: center;
+  color: white;
+  border-radius: 1vh;
+  transition: opacity 3s;
+}
+
+.Message-hidden {
+  opacity: 0;
+}

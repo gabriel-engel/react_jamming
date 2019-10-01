@@ -6,6 +6,8 @@ import PlaylistList from '../PlaylistList/PlaylistList';
 import Playlist from '../Playlist/Playlist';
 import Spotify from '../../util/Spotify';
 import Confirmation from '../Confirmation/Confirmation';
+import LoadingScreen from '../LoadingScreen/LoadingScreen';
+import Message from '../Message/Message';
 
 class App extends React.Component {
   constructor(props) {
@@ -17,14 +19,16 @@ class App extends React.Component {
       playlistTracks: [],
       backupPlaylistTracks: [],
       playlistTracksToRemove: [],
-      currentPlaylistList: false,
       playlistView: false,
       playlistName: '',
       playlistId: '',
       trackPreview: false,
       showDuplicateTracks: true,
       confirmation: {},
-      touchInput: false
+      touchInput: false,
+      asyncQueue: 0,
+      message: "",
+      messageId: 0
     }    
     
     this.search = this.search.bind(this);
@@ -49,11 +53,14 @@ class App extends React.Component {
     this.beforeLeavingApp = this.beforeLeavingApp.bind(this);
   }
     
-  search(term) {
+  async search(term) {
+    this.increaseAsyncQueue();
+    
     Spotify.search(term)
     .then(searchResults => {
       this.setState({
-        searchResults: searchResults
+        searchResults: searchResults,
+        asyncQueue: this.state.asyncQueue - 1
       });
     })
     .then(() => this.hideShowDuplicateTracks());
@@ -61,19 +68,23 @@ class App extends React.Component {
     
   // get user playlist list and set currentPlaylistList state to true
   getUserPlaylists() {
+    this.increaseAsyncQueue();
+    
     Spotify.getUserPlaylists()
     .then(userPlaylists => {
       console.log('getUserPlaylists and retrieve user playlists:')
       console.log(userPlaylists);
       this.setState({
         playlistList: userPlaylists,
-        currentPlaylistList: true
+        asyncQueue: this.state.asyncQueue - 1
       });
     });
   }
   
   // get playlist tracks and set playlist details after opened
   getPlaylistTracks(playlistId) {
+    this.increaseAsyncQueue();
+    
     Spotify.getPlaylistTracks(playlistId)
     .then(playlistTracks => {
       console.log(`get playlist's tracks:`);
@@ -88,7 +99,8 @@ class App extends React.Component {
       
       this.setState({
         playlistTracks: playlistTracks,
-        backupPlaylistTracks: backupPlaylistTracks
+        backupPlaylistTracks: backupPlaylistTracks,
+        asyncQueue: this.state.asyncQueue - 1
       });
     })
     .then(() => this.hideShowDuplicateTracks());
@@ -306,6 +318,8 @@ class App extends React.Component {
     const trackUris = tracks.map(track => track.uri)
     const newName = this.checkForNewPlaylistName();
     
+    this.increaseAsyncQueue();
+    
     Spotify.savePlaylist(this.state.playlistId, this.state.playlistName, trackUris, newName)
     .then( () => {
       
@@ -321,6 +335,9 @@ class App extends React.Component {
         playlistName: '',
         playlistTracks: [],
         playlistView: false,
+        asyncQueue: this.state.asyncQueue - 1,
+        message: `Playlist '${this.state.playlistName}' successfully saved!`,
+        messageId: this.state.messageId + 1
       });
     });
   }
@@ -349,7 +366,21 @@ class App extends React.Component {
       });
     }
     
+    this.increaseAsyncQueue();
+    
+    console.log(this.state.playlistList);
+    console.log(playlistId);
+    const playlist = this.state.playlistList.filter(list => list.id === playlistId);
+    console.log(playlist);
+        
     Spotify.deletePlaylist(playlistId)
+    .then(() => {
+      this.setState({
+        asyncQueue: this.state.asyncQueue - 1,
+        message: `Playlist '${playlist[0].name}' successfully deleted!`,
+        messageId: this.state.messageId + 1
+      })
+    })
     .then(() => this.getUserPlaylists());
   }
   
@@ -367,10 +398,6 @@ class App extends React.Component {
   
   renderPlaylistList() {
     if (!this.state.playlistView && Spotify.checkAuthentication()) {
-      // if there is no current playlist, load it first
-      if (!this.state.currentPlaylistList) {
-        this.getUserPlaylists();
-      }
 
       return (
         <PlaylistList
@@ -525,6 +552,20 @@ class App extends React.Component {
     });
   }
   
+  renderLoadingScreen() {
+    if (this.state.asyncQueue === 0) return;
+    return (
+      <LoadingScreen />
+    )
+  }
+  
+  increaseAsyncQueue() {
+    console.log('increase queue');
+    this.setState({
+      asyncQueue: this.state.asyncQueue + 1
+    });
+  }
+  
   handleTouchInput(event) {
     this.setState({touchInput: true});
   }
@@ -563,6 +604,10 @@ class App extends React.Component {
           </div>
         </div>
         {this.renderConfirmation()}
+        {this.renderLoadingScreen()}
+        <Message
+          message={this.state.message}
+          messageId={this.state.messageId} />
       </div>
     );
   }
@@ -577,11 +622,16 @@ class App extends React.Component {
      * run this.search() to store the authentication token in Spotify.js
      * This will return a search result and calls to Spotify.checkAuthentication()
      * will return true so the results and playlist components will render
+     * 
+     * after the search, user playlist list method is called for first time
      */
     const hashValues = Spotify.processRedirectUriHash();
     
     if (hashValues.accessToken) {
-      this.search(hashValues.searchTerm);
+      this.search(hashValues.searchTerm)
+      .then(() => {
+        this.getUserPlaylists();
+      });
     }
   }
 }

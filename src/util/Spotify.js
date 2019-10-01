@@ -18,6 +18,7 @@ const Spotify = {
   },
   
   getAccessToken(term) {
+    console.log(term);
     // if there is an accessToken, return it
     if (accessToken) return accessToken;
     
@@ -99,7 +100,7 @@ const Spotify = {
     });
   },
   
-  search(term) {
+  async search(term) {
     const accessToken = Spotify.getAccessToken(term);
     const searchEndpoint = 'https://api.spotify.com/v1/search?type=track&q=';
     console.log(`search term: ${term}`);
@@ -132,7 +133,7 @@ const Spotify = {
   },
   
   async getUserPlaylists() {
-    
+    console.log('getUserPlaylists');
     const accessToken = await Spotify.getAccessToken();
     const headers = { Authorization: `Bearer ${accessToken}` };
     const userId = await Spotify.getUserId();
