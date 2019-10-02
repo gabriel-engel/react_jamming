@@ -13,3 +13,9 @@
 .Message-hidden {
   opacity: 0;
 }
+
+.Undo {
+  padding: 0 10px;
+  text-decoration: underline;
+  cursor: pointer;
+}

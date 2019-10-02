@@ -17,8 +17,7 @@ class App extends React.Component {
       searchResults: [],
       playlistList: [],
       playlistTracks: [],
-      backupPlaylistTracks: [],
-      playlistTracksToRemove: [],
+      originalPlaylistTrackState: [],
       playlistView: false,
       playlistName: '',
       playlistId: '',
@@ -28,7 +27,15 @@ class App extends React.Component {
       touchInput: false,
       asyncQueue: 0,
       message: "",
-      messageId: 0
+      messageId: 0,
+      backup: {
+        id: '',
+        trackUris: [],
+        name: '',
+        newName: false,
+        newPlaylist: false
+      },
+      undoAvailable: false
     }    
     
     this.search = this.search.bind(this);
@@ -49,6 +56,7 @@ class App extends React.Component {
     this.hideShowDuplicateTracks = this.hideShowDuplicateTracks.bind(this);
     this.toggleTrackPreview = this.toggleTrackPreview.bind(this);
     this.toggleDuplicateTrackVisibility = this.toggleDuplicateTrackVisibility.bind(this);
+    this.undo = this.undo.bind(this);
     this.handleTouchInput = this.handleTouchInput.bind(this);
     this.beforeLeavingApp = this.beforeLeavingApp.bind(this);
   }
@@ -67,60 +75,103 @@ class App extends React.Component {
   }
     
   // get user playlist list and set currentPlaylistList state to true
-  getUserPlaylists() {
+  async getUserPlaylists(playlistName) {
     this.increaseAsyncQueue();
     
     Spotify.getUserPlaylists()
     .then(userPlaylists => {
-      console.log('getUserPlaylists and retrieve user playlists:')
-      console.log(userPlaylists);
-      this.setState({
+      if (playlistName) {
+        const backup = {};
+        backup.id = userPlaylists[0].id;
+        backup.name = playlistName;
+        backup.trackUris = [];
+        backup.newName = false;
+        backup.newPlaylist = true;
+        
+        this.setState({
+          playlistList: userPlaylists,
+          asyncQueue: this.state.asyncQueue - 1,
+          backup: backup,
+          undoAvailable: true
+        });
+      } else {
+        this.setState({
         playlistList: userPlaylists,
         asyncQueue: this.state.asyncQueue - 1
       });
+      }
     });
   }
   
   // get playlist tracks and set playlist details after opened
-  getPlaylistTracks(playlistId) {
+  getPlaylistTracks(playlistId, forBackup) {
     this.increaseAsyncQueue();
     
     Spotify.getPlaylistTracks(playlistId)
-    .then(playlistTracks => {
-      console.log(`get playlist's tracks:`);
-      console.log(playlistTracks);
-      
-      // create a backup of unique tracks
-      const backupPlaylistTracks = [];
-      
-      for (let track of playlistTracks) {
-        backupPlaylistTracks.push(Object.assign({}, track));
-      }
-      
-      this.setState({
-        playlistTracks: playlistTracks,
-        backupPlaylistTracks: backupPlaylistTracks,
-        asyncQueue: this.state.asyncQueue - 1
-      });
-    })
-    .then(() => this.hideShowDuplicateTracks());
-    
-    // set playlist details
-    this.setPlaylistDetails(playlistId);
+      .then(playlistTracks => {
+
+        if (forBackup) {
+          const backup = {};
+
+          let backupName = '';
+          for (let list of this.state.playlistList) {
+            if (list.id === playlistId) backupName = list.name;
+          }
+
+          const trackUris = [];
+          for (let track of playlistTracks) {
+            trackUris.push(track.uri);
+          }
+
+          backup.id = null;
+          backup.name = backupName;
+          backup.trackUris = trackUris;
+          backup.newName = false;
+          backup.newPlaylist = false;
+
+          this.setState({
+            asyncQueue: this.state.asyncQueue - 1,
+            backup: backup,
+            undoAvailable: true
+          });
+          
+          return;
+        } else {
+          
+          // store original track state
+          const originalPlaylistTrackState = [];
+
+          for (let track of playlistTracks) {
+            originalPlaylistTrackState.push(Object.assign({}, track));
+          }
+
+          this.setState({
+            playlistTracks: playlistTracks,
+            originalPlaylistTrackState: originalPlaylistTrackState,
+            asyncQueue: this.state.asyncQueue - 1
+          });
+        }
+      })
+      .then(() => this.hideShowDuplicateTracks());
+
+      // set playlist details
+      this.setPlaylistDetails(playlistId);
   }
   
   checkForChangesInPlaylist() {
     const playlist = this.state.playlistTracks;
-    const backup = this.state.backupPlaylistTracks;
+    const originalTrackState = this.state.originalPlaylistTrackState;
     
-    if (playlist.length !== backup.length) return true;
+    if (this.checkForNewPlaylistName()) return true;
+    
+    if (playlist.length !== originalTrackState.length) return true;
     
     for (let track of playlist) {
       if (track.delete === true) return true;
     }
     
     for (let i = 0; i < playlist.length; i++) {
-      if (playlist[i].id !== backup[i].id) return true;
+      if (playlist[i].id !== originalTrackState[i].id) return true;
     }
   }
   
@@ -204,8 +255,7 @@ class App extends React.Component {
   swapTracks(indexA, indexB) {
     // rearrange visible tracks
     let trackList = this.state.playlistTracks.filter(track => track.visible);
-    console.log(indexA);
-    console.log(indexB);
+
     // make sure move is valid
     if (indexA === indexB) return;
     if (indexA < 0 || indexB < 0) return;
@@ -239,8 +289,6 @@ class App extends React.Component {
       let i = 0;
       for (let track of this.state.playlistTracks) {
         if (track.visible) {
-          console.log(newTrackList);
-          console.log(newTrackList[i]);
           finalPlaylist.push(newTrackList[i]);
           i++;
         } else {
@@ -314,45 +362,83 @@ class App extends React.Component {
         });
       }
     }
-      
-    const trackUris = tracks.map(track => track.uri)
-    const newName = this.checkForNewPlaylistName();
     
+    // retrieve playlist details
+    let playlistId = this.state.playlistId;
+    const playlistName = this.state.playlistName;
+    const trackUris = tracks.map(track => track.uri);
+    const newName = this.checkForNewPlaylistName();
+
+    // use playlist details to create a backup
+    const backup = {};
+    const backupTrackUris = [];
+    for (let track of this.state.originalPlaylistTrackState) {
+      backupTrackUris.push(track.uri);
+    }
+    
+    backup.id = playlistId ? playlistId : null;
+    backup.name = playlistName;
+    backup.trackUris = backupTrackUris;
+    backup.newName = newName;
+    backup.newPlaylist = backup.id ? false : true;
+        
     this.increaseAsyncQueue();
     
-    Spotify.savePlaylist(this.state.playlistId, this.state.playlistName, trackUris, newName)
+    Spotify.savePlaylist(playlistId, playlistName, trackUris, newName)
     .then( () => {
-      
-      // refresh playlistList if necessary
-      if (!this.state.playlistId || newName) {
-        this.getUserPlaylists();
+      /**
+       * refresh playlist if necessary
+       * if there is no playlist ID, the playlist backup is attained within
+       * this.getUserPlaylists() and used to update the state of the backup
+       * so that it can get the ID of the new top playlist so it can be deleted
+       * if the user chooses to 'undo' its creation
+       */
+      if (!playlistId || newName) {
+        this.getUserPlaylists(playlistName)
       }
     })
-    .then( () => {
-      // reset playlist view and details
-      this.setState({
-        playlistId: '',
-        playlistName: '',
-        playlistTracks: [],
-        playlistView: false,
-        asyncQueue: this.state.asyncQueue - 1,
-        message: `Playlist '${this.state.playlistName}' successfully saved!`,
-        messageId: this.state.messageId + 1
-      });
+    .then( () => {            
+      /**
+       * if a backup ID is present, it was an existing playlist
+       * the backup object in this function can be used to update the state
+       * of backup
+       */
+      if (playlistId) {
+        this.setState({
+          playlistId: '',
+          playlistName: '',
+          playlistTracks: [],
+          originalPlaylistTrackState: [],
+          playlistView: false,
+          asyncQueue: this.state.asyncQueue - 1,
+          message: `Playlist '${this.state.playlistName}' successfully saved!`,
+          messageId: this.state.messageId + 1,
+          backup: backup,
+          undoAvailable: true
+        });
+      } else {
+        this.setState({
+          playlistId: '',
+          playlistName: '',
+          playlistTracks: [],
+          originalPlaylistTrackState: [],
+          playlistView: false,
+          asyncQueue: this.state.asyncQueue - 1,
+          message: `Playlist '${this.state.playlistName}' successfully saved!`,
+          messageId: this.state.messageId + 1
+        });
+      }
     });
   }
   
-  deletePlaylist(playlistId, confirm) {
+  async deletePlaylist(playlistId, confirm) {
     if (!confirm) {
       const message = "Are you sure you want to delete the playlist?";
       this.getConfirmation(message, this.deletePlaylist, playlistId);
       return;
     }
-    
-    console.log(`confirm: ${confirm}`);
-    
+        
     if (confirm === "no") {
-      console.log('playlist not deleted');
       this.setState({
         confirmation: {}
       });
@@ -360,18 +446,17 @@ class App extends React.Component {
     }
     
     if (confirm === "yes") {
-      console.log('playlist deleted');
       this.setState({
         confirmation: {}
       });
     }
     
-    this.increaseAsyncQueue();
-    
-    console.log(this.state.playlistList);
-    console.log(playlistId);
+    // backup the playlist
+    const storeBackup = await this.getPlaylistTracks(playlistId, true);
+        
     const playlist = this.state.playlistList.filter(list => list.id === playlistId);
-    console.log(playlist);
+    
+    this.increaseAsyncQueue();
         
     Spotify.deletePlaylist(playlistId)
     .then(() => {
@@ -430,7 +515,6 @@ class App extends React.Component {
   
   renderConfirmation() {
     if (this.state.confirmation.msg) {
-      console.log(this.state.confirmation);
       return (
         <Confirmation 
           confirmation={this.state.confirmation} />
@@ -439,8 +523,6 @@ class App extends React.Component {
   }
   
   togglePlaylistView(playlistId, confirm) {
-    console.log('toggle');
-    console.log(playlistId);
     /**
      * If there is a playlistId and it isn't the result of a user confirmation
      * callback function, the user is accessing a playlist from the playlistList
@@ -479,7 +561,8 @@ class App extends React.Component {
       
       this.setState({
         playlistTracks: [],
-        backupPlaylistTracks: [],
+        originalPlaylistTrackState: [],
+        playlistId: '',
         playlistName: '',
         playlistView: !this.state.playlistView
       });
@@ -493,12 +576,10 @@ class App extends React.Component {
   }
   
   hideShowDuplicateTracks(toggle) {
-    console.log('hide-------show');
     const visible = !toggle ? this.state.showDuplicateTracks : !this.state.showDuplicateTracks;
     const searchResults = this.state.searchResults;
     const playlistTracks = this.state.playlistTracks;
-    console.log(`show duplicate tracks in hideShow(): ${visible}`);
-    console.log('-------------------');
+    
     // if duplicate tracks are supposed to be invisible
     if (!visible) {
 
@@ -540,9 +621,6 @@ class App extends React.Component {
   }
   
   getConfirmation(msg, func, ...params) {
-    console.log(msg);
-    console.log(func);
-    console.log(...params);
     this.setState({
       confirmation: {
         msg,
@@ -560,10 +638,61 @@ class App extends React.Component {
   }
   
   increaseAsyncQueue() {
-    console.log('increase queue');
     this.setState({
       asyncQueue: this.state.asyncQueue + 1
     });
+  }
+  
+  undo() {
+    const backup = this.state.backup;
+    
+    this.increaseAsyncQueue();
+    
+    // If it was an existing playlist that was edited or deleted, save its backup
+    if (!backup.newPlaylist) {
+    Spotify.savePlaylist(backup.id, backup.name, backup.trackUris, backup.newName)
+    .then( () => {
+      // reset playlist view and details
+      this.setState({
+        playlistId: '',
+        playlistName: '',
+        playlistTracks: [],
+        originalPlaylistTrackState: [],
+        playlistView: false,
+        asyncQueue: this.state.asyncQueue - 1,
+        message: `Playlist '${backup.name}' successfully recovered!`,
+        messageId: this.state.messageId + 1,
+        backup: {
+          id: '',
+          trackUris: [],
+          name: '',
+          newName: false,
+          newPlaylist: false
+        },
+        undoAvailable: false
+      });
+    })
+    .then(() => this.getUserPlaylists());
+    } else {
+      // if it was a new playlist, delete it using the backed up ID
+      Spotify.deletePlaylist(backup.id)
+        .then(() => {
+          this.setState({
+            asyncQueue: this.state.asyncQueue - 1,
+            message: `Playlist '${backup.name}' successfully deleted!`,
+            messageId: this.state.messageId + 1,
+            backup: {
+              id: '',
+              trackUris: [],
+              name: '',
+              newName: false,
+              newPlaylist: false
+            },
+            undoAvailable: false
+          })
+        })
+        .then(() => this.getUserPlaylists());
+    }
   }
   
   handleTouchInput(event) {
@@ -607,7 +736,9 @@ class App extends React.Component {
         {this.renderLoadingScreen()}
         <Message
           message={this.state.message}
-          messageId={this.state.messageId} />
+          messageId={this.state.messageId}
+          undo={this.undo}
+          undoAvailable={this.state.undoAvailable} />
       </div>
     );
   }

@@ -18,13 +18,11 @@ const Spotify = {
   },
   
   getAccessToken(term) {
-    console.log(term);
     // if there is an accessToken, return it
     if (accessToken) return accessToken;
     
     // retrieve hash values if present
     const hashValues = this.processRedirectUriHash();
-    console.log(hashValues);
     
     if (hashValues.accessToken && hashValues.expiration && hashValues.secretNumber) {
       // if the secret number returned doeesn't match browser's cookie, don't store accessToken
@@ -103,7 +101,6 @@ const Spotify = {
   async search(term) {
     const accessToken = Spotify.getAccessToken(term);
     const searchEndpoint = 'https://api.spotify.com/v1/search?type=track&q=';
-    console.log(`search term: ${term}`);
     
     return fetch(`${searchEndpoint}${term}`, {
       headers: {
@@ -133,7 +130,6 @@ const Spotify = {
   },
   
   async getUserPlaylists() {
-    console.log('getUserPlaylists');
     const accessToken = await Spotify.getAccessToken();
     const headers = { Authorization: `Bearer ${accessToken}` };
     const userId = await Spotify.getUserId();
@@ -176,7 +172,6 @@ const Spotify = {
       return jsonResponse.items.map(track => {
                 
         // same format as search() track list
-        console.log(`retrieved playlist track: ${track.track.name}`);
         return {
           id: track.track.id,
           name: track.track.name,
@@ -218,9 +213,6 @@ const Spotify = {
   
   changePlaylistName(headers, id, name) {
     
-    console.log(headers);
-    console.log(id);
-    console.log(name);
     const changePlaylistNameEndpoint = `https://api.spotify.com/v1/playlists/${id}`
     
     headers["Content-Type"] = "application/json";
@@ -272,17 +264,12 @@ const Spotify = {
   
   // saves new playlists or updates existing ones
   async savePlaylist(id, name, trackUris, newName) {
-    console.log(`saving playlist id: ${id} name: ${name}`);
-    console.log('tracks:');
-    console.log(trackUris);
-    console.log(`new name?: ${newName}`);
-    
     if (!name && !trackUris) return;
     
     const accessToken = Spotify.getAccessToken();
     const headers = { Authorization: `Bearer ${accessToken}` };
     const userId = await Spotify.getUserId();
-    
+
     // if it is a new playlist, create a new playlist and save its id
     if (!id) {
       id = await Spotify.createNewPlaylist( headers, userId, name)

@@ -5,19 +5,33 @@ class Message extends React.Component {
   constructor(props) {
     super(props);
     
+    this.handleUndo = this.handleUndo.bind(this);
     this.hideMessage = this.hideMessage.bind(this);
+  }
+  
+  handleUndo() {
+    this.props.undo();
   }
   
   hideMessage(messageDOM) {
     messageDOM.classList.add('Message-hidden');
   }
   
+  
   shouldComponentUpdate(nextProps) {
+    // if there is message with a new id
     if (this.props.messageId !== nextProps.messageId) {
       return true;
     }
+    
+    // if an undo is newly available
+    if (!this.props.undoAvailable && nextProps.undoAvailable) {
+      return true;
+    }
+
     return false;
   }
+  
   
   componentDidUpdate(prevProps) {
     if (this.props.message) {
@@ -38,10 +52,23 @@ class Message extends React.Component {
     }
   }
   
+  renderUndo() {
+    if (this.props.undoAvailable) {
+      return (
+        <span
+          className="Undo"
+          onClick={this.handleUndo} >
+          (undo)
+        </span>
+      );
+    }
+  }
+  
   render() {
       return (
         <div className="Message Message-hidden">
           {this.props.message}
+          {this.renderUndo()}
         </div>
         );
   }

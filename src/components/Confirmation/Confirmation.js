@@ -14,12 +14,10 @@ class Confirmation extends React.Component {
   }
   
   handleNo() {
-    console.log(this.props.confirmation);
     this.props.confirmation.func(...this.props.confirmation.params, "no");
   }
   
   render() {
-    console.log(this.props.confirmation);
       return (
         <div className="Confirmation-background">
           <div className="Confirmation-box">

@@ -53,7 +53,6 @@ class SearchBar extends React.Component {
 
     // when first arrive at callback URL, this properly updates input box
     if (hashTerm && (hashTerm !== undefined && hashTerm !== 'undefined')) {
-      console.log('went');
       input.value = hashTerm;
       this.setState({
         term: hashTerm

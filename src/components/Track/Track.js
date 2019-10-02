@@ -210,15 +210,10 @@ class Track extends React.Component {
       let playlistElement = null;
 
       if (!this.props.isBottomTrack) {
-        console.log('track');
-        console.log(document.querySelectorAll('.Playlist .Track'));
-        console.log(this.props.index);
         playlistElement = document.querySelectorAll('.Playlist .Track')[this.props.index];
       } else {
-        console.log('bottom');
         playlistElement = document.querySelector('.Playlist .Below-Tracklist');
       }
-      console.log(playlistElement);
       playlistElement.addEventListener('dragstart', this.handleDragStart);
       playlistElement.addEventListener('dragover', this.handleDragOver);
       playlistElement.addEventListener('dragenter', this.handleDragEnter);
